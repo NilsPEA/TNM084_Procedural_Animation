@@ -7,28 +7,36 @@ public class HumanController : MonoBehaviour
     private float mSpeed = 0;
     private bool sprinting = false;
 
+    [Header("Speeds")]
     [SerializeField] float turnSpeed = 0.1f;
     [SerializeField] float moveSpeed = 1.0f;
     [SerializeField] float sprintSpeed = 3.0f;
 
-    [SerializeField] float turnAcceleration = 0.2f;
-    [SerializeField] float moveAcceleration = 0.2f;
+    [Header("Accelerations")]
+    [SerializeField] float turnAcceleration = 2.0f;
+    [SerializeField] float moveAcceleration = 2.0f;
 
-    [SerializeField] float minDistToTarget = 0.5f;
-    [SerializeField] float maxDistToTarget = 2.0f;
+    [Header("Distances to target")]
+    [SerializeField] float minDistToTarget = 0.2f;
+    [SerializeField] float maxDistToTarget = 3.0f;
 
-    [SerializeField] float maxAngToTarget;
+    [Header("Max angle to target")]
+    [SerializeField] float maxAngToTarget = 0.2f;
 
-    [SerializeField] public float wantStepAtDistance;
-    [SerializeField] public float sprintStepDistance;
-    // How long a step takes to complete
-    [SerializeField] float sprintMoveDuration;
-    [SerializeField] float moveDuration;
+    [Header("Step distances")]
+    [SerializeField] public float wantStepAtDistance = 0.45f;
+    [SerializeField] public float sprintStepDistance = 0.5f;
 
     // Fraction of the max distance from home we want to overshoot by
-    [SerializeField] float stepOvershootFraction;
-    [SerializeField] float sprintStepOverShootFraction;
+    [Header("Step overshoots")]
+    [SerializeField] float stepOvershootFraction = 0.44f;
+    [SerializeField] float sprintStepOverShootFraction = 0.49f;
 
+    // How long a step takes to complete
+    [Header("Move durations")]
+    [SerializeField] float moveDuration = 0.3f;
+    [SerializeField] float sprintMoveDuration = 0.15f;
+    
 
     float stepAtDistance = 0.45f;
     float moveDur = 0.3f;
@@ -38,25 +46,34 @@ public class HumanController : MonoBehaviour
     float currentAngularVelocity;
 
     //Target that will be tracked
+    [Header("Follow target")]
     [SerializeField] Transform Target;
 
     // Reference to head of character
+    [Header("Head object reference")]
     [SerializeField] Transform headBone;
+
+    //Refernce to body of character
+    [Header("Body object reference")]
     [SerializeField] Transform Body;
 
+    [Header("Head related variables")]
     [SerializeField] float headMaxTurnAngle;
     [SerializeField] float headTrackingSpeed;
     // Start is called before the first frame update
 
+    [Header("Legstepper references")]
     [SerializeField] LegStepper LeftLegStepper;
     [SerializeField] LegStepper RightLegStepper;
+
+    float lerpValue = 0;
     
     IEnumerator LegUpdateCoroutine()
     {
         // Run continuously
         while (true)
         {
-            // Try moving one diagonal pair of legs
+            // Try moving one leg at a time
             do
             {
                 if (!LeftLegStepper.Moving)
@@ -77,18 +94,20 @@ public class HumanController : MonoBehaviour
         }
     }
 
+
+
     void Awake()
     {
+
         StartCoroutine(LegUpdateCoroutine());
     }
-
+    // Head motion helper function
     void HeadMotionUpdate()
     {
-        //Store the current head rotation since we want to use it
+        //Store the current head rotation
         Quaternion currentLocalRotation = headBone.localRotation;
 
-        //Reset the head rotation so our world to local space transformation
-        // will use the head zero-rotation.
+        //Reset the head rotation so our world to local space transformation will use the head zero-rotation.
         headBone.localRotation = Quaternion.identity;
 
 
@@ -99,7 +118,7 @@ public class HumanController : MonoBehaviour
         targetLocalLookDir = Vector3.RotateTowards(
           Vector3.forward,
           targetLocalLookDir,
-          Mathf.Deg2Rad * headMaxTurnAngle, // Note we multiply by Mathf.Deg2Rad here to convert degrees to radians
+          Mathf.Deg2Rad * headMaxTurnAngle, // Multiply by Mathf.Deg2Rad here to convert degrees to radians
           0 // We don't care about the length here, so we leave it at zero
         );
 
@@ -114,7 +133,7 @@ public class HumanController : MonoBehaviour
         );
 
     }
-
+    // Body motion helper function
     void RootMotionUpdate(float mSpeed)
     {
    
@@ -124,7 +143,7 @@ public class HumanController : MonoBehaviour
   
         // Vector toward target on the local XZ plane
         Vector3 towardTargetProjected = Vector3.ProjectOnPlane(towardTarget, Body.up);
-        // Get the angle from the body's forward direction to the direction toward toward our target
+        // Get the angle from the body's forward direction to the direction towards our target
         // Here we get the signed angle around the up vector so we know which direction to turn in
         float angToTarget = Vector3.SignedAngle(Body.forward, towardTargetProjected, Body.up);
         float targetAngularVelocity = 0;
@@ -147,7 +166,7 @@ public class HumanController : MonoBehaviour
         }
 
  
-        // Use our smoothing function to gradually change the velocity
+        // Use smoothing function to gradually change the velocity
         currentAngularVelocity = Mathf.Lerp(
           currentAngularVelocity,
           targetAngularVelocity,
@@ -185,6 +204,7 @@ public class HumanController : MonoBehaviour
 
         // Apply the velocity
         Body.position += currentVelocity * Time.deltaTime;
+        lerpValue += Time.deltaTime / 1.0f;
 
     }
 
@@ -192,14 +212,16 @@ public class HumanController : MonoBehaviour
 
     void Update()
     {
+        // Alter variabler depending on if shift is held for "sprint"
         mSpeed = (Input.GetButton("Fire3") ? sprintSpeed : moveSpeed);
-     
         stepAtDistance = (Input.GetButton("Fire3") ? sprintStepDistance : wantStepAtDistance);
         moveDur = (Input.GetButton("Fire3") ? sprintMoveDuration : moveDuration);
         stepOvershoot = (Input.GetButton("Fire3") ? sprintStepOverShootFraction : stepOvershootFraction);
 
+        //Update head and body movement continuously
         RootMotionUpdate(mSpeed);
         HeadMotionUpdate();
+      
     }
 }
 
