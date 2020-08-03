@@ -7,12 +7,9 @@ public class LegStepper : MonoBehaviour
     // The position and rotation we want to stay in range of when deciding to move or not
     [SerializeField] Transform homeTransform;
 
-    // Arm related variables
-    // Marker to set from unity if script is set to a left or right arm
-    [SerializeField] bool isLeft;
-    [SerializeField] Transform arm;
     // Is the leg moving?
     public bool Moving;
+    public float randomOffsetRange = 0.1f;
     
     IEnumerator Move(float wantStepAtDistance, float moveDuration, float stepOvershootFraction)
     {
@@ -36,9 +33,13 @@ public class LegStepper : MonoBehaviour
         // Make sure the overshoot is level with the ground by projecting it to the XZ plane
         overshootVector = Vector3.ProjectOnPlane(overshootVector, Vector3.up);
 
-        //Apply overshoot
-        Vector3 endPoint = homeTransform.position + overshootVector;
-
+        //Vector that set x and z in a random range
+        Vector3 randomVec = new Vector3(Random.Range(-randomOffsetRange, randomOffsetRange), 0, Random.Range(-randomOffsetRange, randomOffsetRange));
+        
+        //Apply overshoot + random range to give enpoint a slightly random position every time. Making it look
+        // a little more realistic / drunken depending on the range size.
+        Vector3 endPoint = (homeTransform.position + overshootVector) + randomVec;
+        
         // Center point which we want to pass through
         Vector3 centerPoint = (startPoint + endPoint) / 2;
         
@@ -61,41 +62,13 @@ public class LegStepper : MonoBehaviour
             //We use this because it is frame independent compared to lerp which is not
             normalizedTime = Easing.Cubic.InOut(normalizedTime);
 
-            // Move the foot according to a Quadratic bezier curve in order to make it look slightly more realistic
+            // Move and lift the foot according to a Quadratic bezier curve in order to make it look slightly more realistic
             transform.position = Vector3.Lerp(
                 Vector3.Lerp(startPoint, centerPoint, normalizedTime),
                 Vector3.Lerp(centerPoint, endPoint, normalizedTime),
                 normalizedTime);
-            Vector3 temp;
 
-           // Check arm position in relation to feet. Needed in order for the arms not to get intertwined with the
-           // body as we want the to have a slightly independent position compared to the feet in the XZ plane
-            if (isLeft)
-            {
-                if (transform.forward.z < 0 && transform.forward.x < 0)
-                    temp = new Vector3(transform.position.x + 0.1f, arm.position.y, transform.position.z - 0.1f);
-                else if(transform.forward.z < 0 && transform.forward.x > 0)
-                    temp = new Vector3(transform.position.x + 0.1f, arm.position.y, transform.position.z + 0.1f);
-                else if (transform.forward.z > 0 && transform.forward.x < 0)
-                    temp = new Vector3(transform.position.x - 0.1f, arm.position.y, transform.position.z - 0.1f);
-                else
-                    temp = new Vector3(transform.position.x - 0.1f, arm.position.y, transform.position.z + 0.1f);
-            }else
-            {
-                if (transform.forward.z < 0 && transform.forward.x > 0)
-                    temp = new Vector3(transform.position.x - 0.1f, arm.position.y, transform.position.z - 0.1f);
-                else if (transform.forward.z < 0 && transform.forward.x < 0)
-                    temp = new Vector3(transform.position.x - 0.1f, arm.position.y, transform.position.z + 0.1f);
-                else if(transform.forward.z > 0 && transform.forward.x > 0)
-                    temp = new Vector3(transform.position.x + 0.1f, arm.position.y, transform.position.z - 0.1f);
-                else
-                    temp = new Vector3(transform.position.x + 0.1f, arm.position.y, transform.position.z + 0.1f);
-            }
-                
-            // Set arm position relative to the foot
-            arm.position = temp;
-
-            // Rotation the feet and interpolate it
+           
             transform.rotation = Quaternion.Slerp(startRot, endRot, normalizedTime);
 
             // Wait for one frame
